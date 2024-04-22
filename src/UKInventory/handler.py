@@ -2,6 +2,7 @@ import json
 import boto3
 import uuid
 
+#new change
 # Initialize the Boto3 DynamoDB client
 dynamodb_client = boto3.client('dynamodb')
 
