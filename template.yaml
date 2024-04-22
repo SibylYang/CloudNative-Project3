@@ -1,0 +1,149 @@
+Resources:
+  Api:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: !Sub
+        - ${ResourceName} From Stack ${AWS::StackName}
+        - ResourceName: Api
+      StageName: Prod
+      DefinitionBody:
+        openapi: '3.0'
+        info: {}
+        paths:
+          /order:
+            post:
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: !Sub arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${OrderAck.Arn}/invocations
+              responses: {}
+      EndpointConfiguration: REGIONAL
+      TracingEnabled: true
+      Cors:
+        MaxAge: 5
+  OrderAck:
+    Type: AWS::Serverless::Function
+    Properties:
+      Description: !Sub
+        - Stack ${AWS::StackName} Function ${ResourceName}
+        - ResourceName: OrderAck
+      CodeUri: src/OrderAck
+      Handler: handler.handler
+      Runtime: python3.12
+      MemorySize: 3008
+      Timeout: 30
+      Tracing: Active
+      Events:
+        ApiPOSTorder:
+          Type: Api
+          Properties:
+            Path: /order
+            Method: POST
+            RestApiId: !Ref Api
+      Environment:
+        Variables:
+          ORDERTOPIC_TOPIC_NAME: !GetAtt OrderTopic.TopicName
+          ORDERTOPIC_TOPIC_ARN: !Ref OrderTopic
+      Policies:
+        - SNSPublishMessagePolicy:
+            TopicName: !GetAtt OrderTopic.TopicName
+  OrderAckLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${OrderAck}
+  UKInventory:
+    Type: AWS::Serverless::Function
+    Properties:
+      Description: !Sub
+        - Stack ${AWS::StackName} Function ${ResourceName}
+        - ResourceName: UKInventory
+      CodeUri: src/UKInventory
+      Handler: handler.handler
+      Runtime: python3.12
+      MemorySize: 3008
+      Timeout: 30
+      Tracing: Active
+      Events:
+        OrderTopic:
+          Type: SNS
+          Properties:
+            Topic: !Ref OrderTopic
+            Region: !Select
+              - 3
+              - !Split
+                - ':'
+                - !Ref OrderTopic
+      Environment:
+        Variables:
+          UKDB_TABLE_NAME: !Ref UKDB
+          UKDB_TABLE_ARN: !GetAtt UKDB.Arn
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref UKDB
+  UKInventoryLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${UKInventory}
+  USInventory:
+    Type: AWS::Serverless::Function
+    Properties:
+      Description: !Sub
+        - Stack ${AWS::StackName} Function ${ResourceName}
+        - ResourceName: USInventory
+      CodeUri: src/USInventory
+      Handler: handler.handler
+      Runtime: python3.12
+      MemorySize: 3008
+      Timeout: 30
+      Tracing: Active
+      Events:
+        OrderTopic:
+          Type: SNS
+          Properties:
+            Topic: !Ref OrderTopic
+            Region: !Select
+              - 3
+              - !Split
+                - ':'
+                - !Ref OrderTopic
+      Environment:
+        Variables:
+          USDB_TABLE_NAME: !Ref USDB
+          USDB_TABLE_ARN: !GetAtt USDB.Arn
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref USDB
+  USInventoryLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${USInventory}
+  OrderTopic:
+    Type: AWS::SNS::Topic
+  UKDB:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+      BillingMode: PAY_PER_REQUEST
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+  USDB:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+      BillingMode: PAY_PER_REQUEST
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+Transform: AWS::Serverless-2016-10-31
