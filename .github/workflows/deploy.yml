@@ -21,6 +21,8 @@ jobs:
             aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
             aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
             aws-region: us-east-2
+        - name: Set region in samconfig.toml
+          run: sed -i 's/AWS_REGION/${{ secrets.AWS_REGION }}/g' samconfig.toml
         # Build inside Docker containers
         # - run: sam build
         # Prevent prompts and failure when the stack is unchanged
