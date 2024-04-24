@@ -5,6 +5,8 @@ import boto3
 # Initialize the SNS client
 sns_client = boto3.client('sns')
 
+# -- Test on Github Action ---
+
 def handler(event, context):
     # Parse the POST request body
     print(event)
