@@ -1,12 +1,8 @@
 on:
     workflow_dispatch:
-    push:
-      branches:
-        - main
-permissions:
-  id-token: write
-  contents: read
-  
+    # push:
+    #   branches:
+    #     - main
 jobs:
     deploy:
       runs-on: ubuntu-latest
@@ -24,6 +20,6 @@ jobs:
         - name: Set region in samconfig.toml
           run: sed -i 's/AWS_REGION/${{ secrets.AWS_REGION }}/g' samconfig.toml
         # Build inside Docker containers
-        # - run: sam build
+        - run: sam build
         # Prevent prompts and failure when the stack is unchanged
         - run: sam deploy --no-confirm-changeset --no-fail-on-empty-changeset
